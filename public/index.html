@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Push Test</title>
+</head>
+<body>
+    <h1>Web Push Test</h1>
+    <button id="push-btn">Benachrichtigungen erlauben</button>
+
+    <script>
+        const publicVapidKey = 'BHGV74UuIiP2EEqlozOGoC-4WcCtndI5TdMcU3_MqcbaFB8nLynSgQva3JUoA_HJE5HaNmOm1jlVSwtaIVpkiuM';
+        const button = document.getElementById('push-btn');
+
+        button.addEventListener('click', async () => {
+            // 1. Prüfen, ob Service Worker unterstützt werden
+            if ('serviceWorker' in navigator) {
+                // Berechtigung abfragen
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    alert('Berechtigung verweigert!');
+                    return;
+                }
+
+                // 2. Service Worker registrieren
+                const register = await navigator.serviceWorker.register('/sw.js', {
+                    scope: '/'
+                });
+
+                // 3. Push-Abonnement vom Browser anfordern
+                const subscription = await register.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+                });
+
+                // 4. Abonnement an den Railway-Server senden
+                await fetch('/subscribe', {
+                    method: 'POST',
+                    body: JSON.stringify(subscription),
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                alert('Erfolgreich registriert!');
+            }
+        });
+
+        // Hilfsfunktion zur Konvertierung des Schlüssels
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+    </script>
+</body>
+</html>
