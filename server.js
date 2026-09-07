@@ -2,20 +2,19 @@ const express = require('express');
 const webpush = require('web-push');
 const bodyParser = require('body-parser');
 const path = require('path');
-const { Pool } = require('pg'); // PostgreSQL Treiber importieren
+const { Pool } = require('pg');
 
 const app = express();
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 1. Verbindung zur PostgreSQL Datenbank herstellen
-// Railway übergibt im Live-Betrieb automatisch die Umgebungsvariable process.env.DATABASE_URL
+// 1. PostgreSQL Verbindung
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:passwort@localhost:5432/mein_lokaler_test',
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false // Erforderlich für Railway-Verbindungen
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
-// 2. Tabelle beim Serverstart anlegen (falls noch nicht vorhanden)
+// 2. Datenbank initialisieren (Erstellt Tabelle und fügt die Spalte für den Namen hinzu)
 const initDb = async () => {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS push_subscriptions (
@@ -24,7 +23,11 @@ const initDb = async () => {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
-  console.log('PostgreSQL Tabelle ist bereit.');
+  // Fügt die Username-Spalte hinzu, falls sie aus dem alten Test noch fehlt
+  await pool.query(`
+    ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS username TEXT;
+  `);
+  console.log('PostgreSQL Datenbank & Struktur sind bereit.');
 };
 initDb().catch(err => console.error('Datenbank-Fehler beim Start:', err));
 
@@ -32,63 +35,69 @@ initDb().catch(err => console.error('Datenbank-Fehler beim Start:', err));
 const publicVapidKey = 'BHGV74UuIiP2EEqlozOGoC-4WcCtndI5TdMcU3_MqcbaFB8nLynSgQva3JUoA_HJE5HaNmOm1jlVSwtaIVpkiuM';
 const privateVapidKey = 'SSEIN5yZtJCbtBwGWDQmAgMvoyz_1TDyOQ97Qgphzz0';
 
-webpush.setVapidDetails(
-  'mailto:test@deinedomain.com',
-  publicVapidKey,
-  privateVapidKey
-);
+webpush.setVapidDetails('mailto:test@deinedomain.com', publicVapidKey, privateVapidKey);
 
-// Route 1: Abonnement in der PostgreSQL Datenbank speichern
+// Route 1: Abonnement MIT Name empfangen und speichern
 app.post('/subscribe', async (req, res) => {
-  const subscription = req.body;
+  const { subscription, username } = req.body;
+
+  if (!username || username.trim() === '') {
+    return res.status(400).json({ error: 'Name wird benötigt!' });
+  }
 
   try {
-    // Das JSON-Abonnement wird sicher in der Spalte "subscription_data" abgelegt
+    // Falls der User sich neu registriert, alten Eintrag löschen (verhindert Duplikate)
+    await pool.query('DELETE FROM push_subscriptions WHERE username = $1', [username.trim()]);
+
+    // Neu eintragen
     await pool.query(
-      'INSERT INTO push_subscriptions (subscription_data) VALUES ($1)',
-      [JSON.stringify(subscription)]
+      'INSERT INTO push_subscriptions (subscription_data, username) VALUES ($1, $2)',
+      [JSON.stringify(subscription), username.trim()]
     );
     
-    res.status(201).json({});
-    console.log('Ein neues Smartphone wurde dauerhaft in PostgreSQL gespeichert!');
+    res.status(201).json({ success: true });
+    console.log(`Smartphone von "${username}" erfolgreich registriert!`);
   } catch (err) {
-    console.error('Fehler beim Speichern in DB:', err);
-    res.status(500).send(err);
+    console.error('Fehler beim Speichern:', err);
+    res.status(500).json({ error: 'Datenbankfehler' });
   }
 });
 
-// Route 2: Push-Nachricht an ALLE gespeicherten Smartphones senden
+// Route 2: Push auslösen (Gezielt per Name oder an alle)
+// Testen über: /trigger-push?user=Max oder /trigger-push (für alle)
 app.get('/trigger-push', async (req, res) => {
+  const targetUser = req.query.user;
+
   try {
-    // Alle Abonnements aus der Datenbank abfragen
-    const result = await pool.query('SELECT subscription_data FROM push_subscriptions');
+    let result;
+    if (targetUser) {
+      // Nur an bestimmten User senden
+      result = await pool.query('SELECT subscription_data, username FROM push_subscriptions WHERE username = $1', [targetUser.trim()]);
+    } else {
+      // An alle senden, wenn kein User angegeben ist
+      result = await pool.query('SELECT subscription_data, username FROM push_subscriptions');
+    }
     
     if (result.rows.length === 0) {
-      return res.status(400).send('Keine Smartphones in der Datenbank registriert!');
+      return res.status(400).send(targetUser ? `User "${targetUser}" nicht gefunden!` : 'Keine Geräte registriert!');
     }
 
     const payload = JSON.stringify({
-      title: 'PostgreSQL Push!',
-      body: `Gesendet an eines von ${result.rows.length} registrierten Geräten!`
+      title: 'Neue Nachricht!',
+      body: targetUser ? `Hallo ${targetUser}, das ist dein persönlicher Push!` : 'Sammelruf an alle registrierten Smartphones!'
     });
 
-    // Schleife durchläuft alle gefundenen Smartphones in der DB
     const pushPromises = result.rows.map(row => {
-      const subscription = row.subscription_data;
-      return webpush.sendNotification(subscription, payload)
-        .catch(err => {
-          // Falls ein Abo abgelaufen oder ungültig ist (z.B. App deinstalliert), könnte man es hier löschen
-          console.error('Senden an ein Gerät fehlgeschlagen:', err);
-        });
+      return webpush.sendNotification(row.subscription_data, payload)
+        .catch(err => console.error(`Fehler bei User ${row.username}:`, err));
     });
 
-    // Warten, bis alle Push-Nachrichten abgeschickt wurden
     await Promise.all(pushPromises);
-    res.send(`Push-Meldung an alle ${result.rows.length} Geräte gesendet!`);
+    res.send(`Push erfolgreich an ${result.rows.length} Gerät(e) gesendet!`);
 
   } catch (err) {
-    console.error('Fehler beim Abrufen aus DB:', err);
-    res.status(500).send(err);
+    console.error(err);
+    res.status(500).send('Interner Serverfehler');
   }
 });
 
