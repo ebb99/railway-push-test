@@ -16,17 +16,14 @@ self.addEventListener('push', event => {
     }
 
     // Die Optionen für das Smartphone-Popup definieren
-    const options = {
-        body: data.body,
-        // Ein sauberes Glocken-Icon für die Benachrichtigungsleiste
-        icon: 'https://flaticon.com', 
-        // Vibriert kurz (Muster: 200ms Vibration, 100ms Pause, 200ms Vibration)
-        vibrate:,
-        // Verhindert, dass alte Nachrichten gestapelt werden (neue überschreiben alte mit dem gleichen Tag)
-        tag: 'railway-push-alarm',
-        // Hält die Nachricht auf dem Android-Bildschirm, bis der Nutzer sie wegwischt
-        requireInteraction: true
-    };
+const options = {
+    body: data.body,
+    vibrate: [200, 100, 200],
+    tag: 'railway-push-alarm',
+    requireInteraction: true
+};
+
+
 
     // Das Popup nativ auf dem Smartphone-Bildschirm anzeigen
     event.waitUntil(
