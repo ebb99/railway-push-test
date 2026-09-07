@@ -2,50 +2,213 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Push Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Push-Dienst</title>
+    <style>
+        /* Farbvariablen für das Design (Light Mode / Hell) */
+        :root {
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --primary-color: #4f46e5;
+            --primary-hover: #4338ca;
+            --border-color: #e5e7eb;
+        }
+
+        /* Automatischer Dark Mode (Dunkles Design basierend auf Smartphone-System) */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #0f172a;
+                --card-bg: #1e293b;
+                --text-color: #f8fafc;
+                --border-color: #334155;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* Container-Karte */
+        .card {
+            background-color: var(--card-bg);
+            padding: 30px 24px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        p {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        /* Eingabefeld optimiert für Smartphones */
+        input[type="text"] {
+            width: 100%;
+            padding: 14px 16px;
+            font-size: 16px; /* Wichtig: Verhindert automatisches Hereinzoomen auf iPhones */
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            background-color: transparent;
+            color: var(--text-color);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary-color);
+        }
+
+        /* Aktivierungs-Button */
+        button {
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+            background-color: var(--primary-color);
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.4);
+            transition: background-color 0.2s, transform 0.1s;
+            -webkit-tap-highlight-color: transparent; /* Entfernt grauen Klick-Rahmen auf Mobilgeräten */
+        }
+
+        button:active {
+            transform: scale(0.98);
+            background-color: var(--primary-hover);
+        }
+
+        button:disabled {
+            background-color: #9ca3af;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        .status-msg {
+            margin-top: 16px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+    </style>
 </head>
 <body>
-    <h1>Web Push Test</h1>
-    <button id="push-btn">Benachrichtigungen erlauben</button>
+
+    <div class="card">
+        <h1>Push-Benachrichtigung</h1>
+        <p>Trage deinen Namen ein, um Benachrichtigungen für dein Smartphone zu aktivieren.</p>
+        
+        <div class="form-group">
+            <label for="username">Dein Name</label>
+            <input type="text" id="username" placeholder="z.B. Max" autocomplete="off">
+        </div>
+
+        <button id="push-btn">Aktivieren</button>
+        <div id="status" class="status-msg"></div>
+    </div>
 
     <script>
+        // HIER UNBEDINGT DEINEN GENERIERTEN ÖFFENTLICHEN VAPID-SCHLÜSSEL EINTRAGEN
         const publicVapidKey = 'BHGV74UuIiP2EEqlozOGoC-4WcCtndI5TdMcU3_MqcbaFB8nLynSgQva3JUoA_HJE5HaNmOm1jlVSwtaIVpkiuM';
+        
         const button = document.getElementById('push-btn');
+        const usernameInput = document.getElementById('username');
+        const statusDiv = document.getElementById('status');
 
         button.addEventListener('click', async () => {
-            // 1. Prüfen, ob Service Worker unterstützt werden
+            const name = usernameInput.value.trim();
+            if (!name) {
+                alert('Bitte gib zuerst deinen Namen ein!');
+                return;
+            }
+
+            statusDiv.style.color = 'var(--primary-color)';
+            statusDiv.textContent = 'Registrierung läuft...';
+
             if ('serviceWorker' in navigator) {
-                // Berechtigung abfragen
-                const permission = await Notification.requestPermission();
-                if (permission !== 'granted') {
-                    alert('Berechtigung verweigert!');
-                    return;
+                try {
+                    // 1. Berechtigung auf dem Smartphone abfragen
+                    const permission = await Notification.requestPermission();
+                    if (permission !== 'granted') {
+                        statusDiv.style.color = '#ef4444';
+                        statusDiv.textContent = 'Berechtigung verweigert.';
+                        return;
+                    }
+
+                    // 2. Service Worker registrieren
+                    const register = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+
+                    // 3. Push-Abonnement vom Browser-Push-Dienst holen
+                    const subscription = await register.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+                    });
+
+                    // 4. Daten (Abonnement + Name) per POST an deinen Server senden
+                    const response = await fetch('/subscribe', {
+                        method: 'POST',
+                        body: JSON.stringify({ subscription, username: name }),
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    if (response.ok) {
+                        statusDiv.style.color = '#10b981';
+                        statusDiv.textContent = `Erfolgreich als "${name}" registriert!`;
+                        usernameInput.disabled = true;
+                        button.disabled = true;
+                    } else {
+                        statusDiv.style.color = '#ef4444';
+                        statusDiv.textContent = 'Server-Fehler beim Speichern.';
+                    }
+
+                } catch (err) {
+                    console.error(err);
+                    statusDiv.style.color = '#ef4444';
+                    statusDiv.textContent = 'Fehler bei der Registrierung.';
                 }
-
-                // 2. Service Worker registrieren
-                const register = await navigator.serviceWorker.register('/sw.js', {
-                    scope: '/'
-                });
-
-                // 3. Push-Abonnement vom Browser anfordern
-                const subscription = await register.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
-                });
-
-                // 4. Abonnement an den Railway-Server senden
-                await fetch('/subscribe', {
-                    method: 'POST',
-                    body: JSON.stringify(subscription),
-                    headers: { 'Content-Type': 'application/json' }
-                });
-
-                alert('Erfolgreich registriert!');
+            } else {
+                statusDiv.style.color = '#ef4444';
+                statusDiv.textContent = 'Browser unterstützt keinen Web-Push.';
             }
         });
 
-        // Hilfsfunktion zur Konvertierung des Schlüssels
+        // Hilfsfunktion zur Konvertierung des Schlüssels für den Push-Manager
         function urlBase64ToUint8Array(base64String) {
             const padding = '='.repeat((4 - base64String.length % 4) % 4);
             const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
