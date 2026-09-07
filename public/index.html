@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Push-Dienst</title>
+    <title>Push-Zentrale</title>
     <style>
-        /* Farbvariablen für das Design (Light Mode / Hell) */
         :root {
             --bg-color: #f4f7f6;
             --card-bg: #ffffff;
             --text-color: #333333;
             --primary-color: #4f46e5;
             --primary-hover: #4338ca;
+            --secondary-color: #10b981;
+            --secondary-hover: #059669;
             --border-color: #e5e7eb;
         }
 
-        /* Automatischer Dark Mode (Dunkles Design basierend auf Smartphone-System) */
         @media (prefers-color-scheme: dark) {
             :root {
                 --bg-color: #0f172a;
@@ -36,52 +36,52 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             padding: 20px;
+            gap: 24px;
         }
 
-        /* Container-Karte */
         .card {
             background-color: var(--card-bg);
-            padding: 30px 24px;
+            padding: 24px;
             border-radius: 16px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
             width: 100%;
             max-width: 400px;
             text-align: center;
         }
 
-        h1 {
-            font-size: 24px;
+        h2 {
+            font-size: 20px;
             font-weight: 700;
             margin-bottom: 8px;
         }
 
         p {
-            font-size: 14px;
+            font-size: 13px;
             color: #6b7280;
-            margin-bottom: 24px;
+            margin-bottom: 16px;
         }
 
         .form-group {
             text-align: left;
-            margin-bottom: 20px;
+            margin-bottom: 14px;
         }
 
         label {
             display: block;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
 
-        /* Eingabefeld optimiert für Smartphones */
         input[type="text"] {
             width: 100%;
-            padding: 14px 16px;
-            font-size: 16px; /* Wichtig: Verhindert automatisches Hereinzoomen auf iPhones */
+            padding: 12px 14px;
+            font-size: 16px;
             border: 2px solid var(--border-color);
             border-radius: 10px;
             background-color: transparent;
@@ -94,26 +94,30 @@
             border-color: var(--primary-color);
         }
 
-        /* Aktivierungs-Button */
         button {
             width: 100%;
-            padding: 14px;
-            font-size: 16px;
+            padding: 12px;
+            font-size: 15px;
             font-weight: 600;
             color: white;
-            background-color: var(--primary-color);
             border: none;
             border-radius: 10px;
             cursor: pointer;
-            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.4);
             transition: background-color 0.2s, transform 0.1s;
-            -webkit-tap-highlight-color: transparent; /* Entfernt grauen Klick-Rahmen auf Mobilgeräten */
+            -webkit-tap-highlight-color: transparent;
         }
 
-        button:active {
-            transform: scale(0.98);
-            background-color: var(--primary-hover);
+        .btn-primary {
+            background-color: var(--primary-color);
+            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.4);
         }
+        .btn-primary:active { background-color: var(--primary-hover); transform: scale(0.98); }
+
+        .btn-secondary {
+            background-color: var(--secondary-color);
+            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.4);
+        }
+        .btn-secondary:active { background-color: var(--secondary-hover); transform: scale(0.98); }
 
         button:disabled {
             background-color: #9ca3af;
@@ -122,65 +126,88 @@
         }
 
         .status-msg {
-            margin-top: 16px;
-            font-size: 14px;
+            margin-top: 12px;
+            font-size: 13px;
             font-weight: 500;
         }
     </style>
 </head>
 <body>
 
+    <!-- BOX 1: SMARTPHONE REGISTRIEREN -->
     <div class="card">
-        <h1>Push-Benachrichtigung</h1>
-        <p>Trage deinen Namen ein, um Benachrichtigungen für dein Smartphone zu aktivieren.</p>
+        <h2>1. Smartphone registrieren</h2>
+        <p>Trage deinen Namen ein, um Benachrichtigungen für dieses Handy zu aktivieren.</p>
         
         <div class="form-group">
-            <label for="username">Dein Name</label>
-            <input type="text" id="username" placeholder="z.B. Max" autocomplete="off">
+            <label for="reg-username">Dein Name</label>
+            <input type="text" id="reg-username" placeholder="z.B. Eddi" autocomplete="off">
         </div>
 
-        <button id="push-btn">Aktivieren</button>
-        <div id="status" class="status-msg"></div>
+        <button id="register-btn" class="btn-primary">Aktivieren</button>
+        <div id="reg-status" class="status-msg"></div>
+    </div>
+
+    <!-- BOX 2: PUSH-NACHRICHT DIREKT SENDEN -->
+    <div class="card">
+        <h2>2. Push-Nachricht senden</h2>
+        <p>Sende von hier aus direkt eine Nachricht an ein registriertes Smartphone.</p>
+        
+        <div class="form-group">
+            <label for="send-target">Empfänger-Name (leer lassen für ALLE)</label>
+            <input type="text" id="send-target" placeholder="z.B. Eddi" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+            <label for="send-text">Nachrichtstext</label>
+            <input type="text" id="send-text" placeholder="Deine Nachricht..." autocomplete="off">
+        </div>
+
+        <button id="send-btn" class="btn-secondary">Nachricht senden</button>
+        <div id="send-status" class="status-msg"></div>
     </div>
 
     <script>
-        // HIER UNBEDINGT DEINEN GENERIERTEN ÖFFENTLICHEN VAPID-SCHLÜSSEL EINTRAGEN
-        const publicVapidKey = 'BHGV74UuIiP2EEqlozOGoC-4WcCtndI5TdMcU3_MqcbaFB8nLynSgQva3JUoA_HJE5HaNmOm1jlVSwtaIVpkiuM';
+        // HIER DEINEN GENERIERTEN ÖFFENTLICHEN VAPID-SCHLÜSSEL EINTRAGEN
+        const publicVapidKey = 'DEIN_ÖFFENTLICHER_SCHLÜSSEL';
         
-        const button = document.getElementById('push-btn');
-        const usernameInput = document.getElementById('username');
-        const statusDiv = document.getElementById('status');
+        // Elemente für Registrierung
+        const regButton = document.getElementById('register-btn');
+        const regUsernameInput = document.getElementById('reg-username');
+        const regStatusDiv = document.getElementById('reg-status');
 
-        button.addEventListener('click', async () => {
-            const name = usernameInput.value.trim();
+        // Elemente für Senden
+        const sendButton = document.getElementById('send-btn');
+        const sendTargetInput = document.getElementById('send-target');
+        const sendTextInput = document.getElementById('send-text');
+        const sendStatusDiv = document.getElementById('send-status');
+
+        // LOGIK 1: SMARTPHONE REGISTRIEREN
+        regButton.addEventListener('click', async () => {
+            const name = regUsernameInput.value.trim();
             if (!name) {
                 alert('Bitte gib zuerst deinen Namen ein!');
                 return;
             }
 
-            statusDiv.style.color = 'var(--primary-color)';
-            statusDiv.textContent = 'Registrierung läuft...';
+            regStatusDiv.style.color = 'var(--primary-color)';
+            regStatusDiv.textContent = 'Registrierung läuft...';
 
             if ('serviceWorker' in navigator) {
                 try {
-                    // 1. Berechtigung auf dem Smartphone abfragen
                     const permission = await Notification.requestPermission();
                     if (permission !== 'granted') {
-                        statusDiv.style.color = '#ef4444';
-                        statusDiv.textContent = 'Berechtigung verweigert.';
+                        regStatusDiv.style.color = '#ef4444';
+                        regStatusDiv.textContent = 'Berechtigung verweigert.';
                         return;
                     }
 
-                    // 2. Service Worker registrieren
                     const register = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-
-                    // 3. Push-Abonnement vom Browser-Push-Dienst holen
                     const subscription = await register.pushManager.subscribe({
                         userVisibleOnly: true,
                         applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
                     });
 
-                    // 4. Daten (Abonnement + Name) per POST an deinen Server senden
                     const response = await fetch('/subscribe', {
                         method: 'POST',
                         body: JSON.stringify({ subscription, username: name }),
@@ -188,27 +215,59 @@
                     });
 
                     if (response.ok) {
-                        statusDiv.style.color = '#10b981';
-                        statusDiv.textContent = `Erfolgreich als "${name}" registriert!`;
-                        usernameInput.disabled = true;
-                        button.disabled = true;
+                        regStatusDiv.style.color = '#10b981';
+                        regStatusDiv.textContent = `Erfolgreich als "${name}" registriert!`;
+                        regUsernameInput.disabled = true;
+                        regButton.disabled = true;
                     } else {
-                        statusDiv.style.color = '#ef4444';
-                        statusDiv.textContent = 'Server-Fehler beim Speichern.';
+                        regStatusDiv.style.color = '#ef4444';
+                        regStatusDiv.textContent = 'Server-Fehler beim Speichern.';
                     }
-
                 } catch (err) {
                     console.error(err);
-                    statusDiv.style.color = '#ef4444';
-                    statusDiv.textContent = 'Fehler bei der Registrierung.';
+                    regStatusDiv.style.color = '#ef4444';
+                    regStatusDiv.textContent = 'Fehler bei der Registrierung.';
                 }
-            } else {
-                statusDiv.style.color = '#ef4444';
-                statusDiv.textContent = 'Browser unterstützt keinen Web-Push.';
             }
         });
 
-        // Hilfsfunktion zur Konvertierung des Schlüssels für den Push-Manager
+        // LOGIK 2: PUSH-NACHRICHT AUS DER FORMULAR-BOX SENDEN
+        sendButton.addEventListener('click', async () => {
+            const target = sendTargetInput.value.trim();
+            const text = sendTextInput.value.trim();
+
+            if (!text) {
+                alert('Bitte gib einen Nachrichtstext ein!');
+                return;
+            }
+
+            sendStatusDiv.style.color = 'var(--text-color)';
+            sendStatusDiv.textContent = 'Sende...';
+
+            try {
+                let url = `/trigger-push?text=${encodeURIComponent(text)}`;
+                if (target) {
+                    url += `&user=${encodeURIComponent(target)}`;
+                }
+
+                const response = await fetch(url);
+                const responseText = await response.text();
+
+                if (response.ok) {
+                    sendStatusDiv.style.color = '#10b981';
+                    sendStatusDiv.textContent = responseText;
+                    sendTextInput.value = '';
+                } else {
+                    sendStatusDiv.style.color = '#ef4444';
+                    sendStatusDiv.textContent = responseText;
+                }
+            } catch (err) {
+                console.error(err);
+                sendStatusDiv.style.color = '#ef4444';
+                sendStatusDiv.textContent = 'Verbindungsfehler zum Server.';
+            }
+        });
+
         function urlBase64ToUint8Array(base64String) {
             const padding = '='.repeat((4 - base64String.length % 4) % 4);
             const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
